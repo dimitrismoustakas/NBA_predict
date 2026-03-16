@@ -343,14 +343,21 @@ class RawNBADataFetcher:
         schedule_subset.drop_duplicates(subset=["game_id"], inplace=True)
 
         catalog_df = catalog_df.merge(schedule_subset, on="game_id", how="left")
-        catalog_df["is_cup"] = (
-            catalog_df["schedule_game_label"].eq("Emirates NBA Cup")
-            | catalog_df["schedule_game_subtype"].isin(["in-season", "in-season-knockout"])
+        catalog_df["is_playin"] = (
+            catalog_df["schedule_game_label"].fillna("").str.contains("Play-In", case=False)
+            | catalog_df["schedule_game_sublabel"].fillna("").str.contains(
+                "Play-In", case=False
+            )
         )
-        catalog_df["is_playin"] = catalog_df["schedule_game_label"].fillna("").str.contains(
-            "Play-In", case=False
+        catalog_df["is_cup_final"] = (
+            catalog_df["schedule_game_label"].fillna("").eq("Emirates NBA Cup")
+            & catalog_df["schedule_game_sublabel"].fillna("").str.contains(
+                "Championship", case=False
+            )
         )
-        catalog_df["include_for_fetch"] = ~(catalog_df["is_cup"] | catalog_df["is_playin"])
+        catalog_df["include_for_fetch"] = ~(
+            catalog_df["is_playin"] | catalog_df["is_cup_final"]
+        )
         catalog_df["game_date"] = pd.to_datetime(catalog_df["game_date"]).dt.strftime("%Y-%m-%d")
         catalog_df["schedule_game_date"] = pd.to_datetime(
             catalog_df["schedule_game_date"], errors="coerce"
